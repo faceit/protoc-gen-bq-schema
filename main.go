@@ -22,9 +22,8 @@ package protoc_gen_bq_schema
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"path"
 	"strings"
 
@@ -33,7 +32,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	descriptor "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 )
 
@@ -365,23 +364,32 @@ func getBigqueryMessageOptions(msg *descriptor.DescriptorProto) (*protos.BigQuer
 		return nil, nil
 	}
 
+	// TODO proper tests for this
 	if !proto.HasExtension(options, faceit.E_EventName) || !proto.HasExtension(options, faceit.E_EventVersion) {
 		return nil, nil
 	}
 
 	eventName, err := proto.GetExtension(options, faceit.E_EventName)
-	if eventName == "" {
+	if err != nil {
 		return nil, err
+	}
+	name, ok := eventName.(*string)
+	if !ok {
+		return nil, errors.New("eventName was not a string")
 	}
 
 	eventVersion, err := proto.GetExtension(options, faceit.E_EventVersion)
 	if err != nil {
 		return nil, err
 	}
+	version, ok := eventVersion.(*int32)
+	if !ok {
+		return nil, errors.New("eventVersion was not a string")
+	}
 
-	name := fmt.Sprintf("%s_v%d", eventName, eventVersion)
+	tableName := fmt.Sprintf("%s_v%d", *name, *version)
 	return &protos.BigQueryMessageOptions{
-		TableName: name,
+		TableName: tableName,
 	}, nil
 }
 
@@ -410,22 +418,4 @@ func Convert(req *plugin.CodeGeneratorRequest) (*plugin.CodeGeneratorResponse, e
 		}
 	}
 	return res, nil
-}
-
-func convertFrom(rd io.Reader) (*plugin.CodeGeneratorResponse, error) {
-	glog.V(1).Info("Reading code generation request")
-	input, err := ioutil.ReadAll(rd)
-	if err != nil {
-		glog.Error("Failed to read request:", err)
-		return nil, err
-	}
-	req := &plugin.CodeGeneratorRequest{}
-	err = proto.Unmarshal(input, req)
-	if err != nil {
-		glog.Error("Can't unmarshal input:", err)
-		return nil, err
-	}
-
-	glog.V(1).Info("Converting input")
-	return Convert(req)
 }

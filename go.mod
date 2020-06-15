@@ -3,7 +3,8 @@ module github.com/faceit/protoc-gen-bq-schema
 go 1.14
 
 require (
-	github.com/faceit/tracking-event-protos-generated v2.4.2-0.20200615092852-e7a5dcade2ee+incompatible
+	github.com/faceit/tracking-event-protos-generated v2.4.2-0.20200615102102-65f31d57f3c7+incompatible
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.2
+	google.golang.org/protobuf v1.23.0
 )
