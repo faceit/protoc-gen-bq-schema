@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/faceit/protoc-gen-bq-schema/protos"
+	faceit "github.com/faceit/tracking-event-protos-generated/faceit/tracking/v1"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -364,22 +365,21 @@ func getBigqueryMessageOptions(msg *descriptor.DescriptorProto) (*protos.BigQuer
 		return nil, nil
 	}
 
-	if !proto.HasExtension(options, protos.E_BigqueryOpts) {
+	if !proto.HasExtension(options, faceit.E_EventName) || !proto.HasExtension(options, faceit.E_EventVersion) {
 		return nil, nil
 	}
 
-	optionValue, err := proto.GetExtension(options, protos.E_BigqueryOpts)
-	if err == nil {
-		return optionValue.(*protos.BigQueryMessageOptions), nil
+	eventName, err := proto.GetExtension(options, faceit.E_EventName)
+	if eventName == "" {
+		return nil, err
 	}
 
-	// try to decode the extension using old definition before failing
-	optionValue, newErr := proto.GetExtension(options, e_TableName)
-	if newErr != nil {
-		return nil, err // return original error
+	eventVersion, err := proto.GetExtension(options, faceit.E_EventVersion)
+	if err != nil {
+		return nil, err
 	}
-	// translate this old definition to the expected message type
-	name := *optionValue.(*string)
+
+	name := fmt.Sprintf("%s_v%d", eventName, eventVersion)
 	return &protos.BigQueryMessageOptions{
 		TableName: name,
 	}, nil
@@ -429,4 +429,3 @@ func convertFrom(rd io.Reader) (*plugin.CodeGeneratorResponse, error) {
 	glog.V(1).Info("Converting input")
 	return Convert(req)
 }
-
